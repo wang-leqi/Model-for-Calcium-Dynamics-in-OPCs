@@ -1,0 +1,91 @@
+# The OPC calcium model
+# ODES
+dCa/dt=fi*((v_ip3*((IP3/(IP3+d_1))^3)*((Ca/(Ca+d5))^3)*(h^3)*(Cer-Ca))+(v2*(Cer-Ca))+(vr*w*(1+(Ca^3)/kb1)/(ka/(Ca^4)+1+(Ca^3)/kb1)*(Cer-Ca))-(v3*(Ca^hc3)/((k3serc^hc3)+(Ca^hc3)))+(1/(2*Vosteo*F))*(2*Vs/((-67-(R*temp/(2*F)*log(cao/(Ca*10^(-3)))*10^3))*(1/(2*Vosteo*F))))*((tanh(Cer-ksoc))/2*(volt-(R*temp/(2*F)*log(cao/(Ca*10^(-3)))*10^3)))+(-(1/(2*Vosteo*F))*((1/(1+((kn/Ca)^1.5)))*gncx*(exp(eta*(volt*(10^(-3))*F/(R*temp)))*(Na^3)*cao-exp((eta-1)*(volt*(10^(-3))*F/(R*temp)))*(nao^3)*Ca*1e-3)/(dncx+Na^3*cao+nao^3*Ca*10^(-3)))*10^6)-(v_pmca*(Ca^2)/((Ca^2)+(k_pmca^2)))+(-(1/(Vosteo*F))*(gL*mL*hL*(volt-(R*temp/(2*F)*log(cao/(Ca*10^(-3)))*10^3)))*10^6)+(-(1/(Vosteo*F))*(gT*mT*hTf*(volt-(R*temp/(2*F)*log(cao/(Ca*10^(-3)))*10^3)))*10^6)+(-f_Ca*(1/(2*Vosteo*F))*(barg_p2x7*(Q1+Q2+Q3+(1-(D1+D2+D3+D4+C1+C2+Q1+Q2+C4+C3+Q3)))*volt)*10^(6)))+(-fleak*(1/(2*Vosteo*F))*(gleakk*(volt-Vlk))*10**6)
+dCer/dt=(-gamma*fe*((v_ip3*((IP3/(IP3+d_1))^3)*((Ca/(Ca+d5))^3)*(h^3)*(Cer-Ca))+(v2*(Cer-Ca))+(vr*w*(1+(Ca^3)/kb1)/(ka/(Ca^4)+1+(Ca^3)/kb1)*(Cer-Ca))-(v3*(Ca^hc3)/((k3serc^hc3)+(Ca^hc3)))))
+dNa/dt=-3*(1/(Vosteo*F))*((1/(1+((kn/Ca)^1.5)))*gncx*(exp(eta*(volt*(10^(-3))*F/(R*temp)))*(Na^3)*cao-exp((eta-1)*(volt*(10^(-3))*F/(R*temp)))*(nao^3)*Ca*1e-3)/(dncx+Na^3*cao+nao^3*Ca*10^(-3)))*10^3-3*(-(1/(Vosteo*F))*(gnak*Kout/(Kout+Knakko)*Na^1.5/(Na^1.5+Knakna^1.5)*(volt+135.1)/(volt+300))*10^3)+(Narest-Na)/tetana+(-f_Na*(1/(Vosteo*F))*(barg_p2x7*(Q1+Q2+Q3+(1-(D1+D2+D3+D4+C1+C2+Q1+Q2+C4+C3+Q3)))*volt)*10^(3))+(-(1-(fleak))*(1/(Vosteo*F))*(gleakk*(volt-Vlk))*10^3)
+dK/dt=2*(-(1/(Vosteo*F))*(gnak*Kout/(Kout+Knakko)*Na^1.5/(Na^1.5+Knakna^1.5)*(volt+135.1)/(volt+300))*10^3)+(Krest-K)/tetak+(-(1/(Vosteo*F))*(gk*sqrt(Kout)*(volt-(R*temp/(F)*log(Kout/K)*10^3)))*10^3)+(-(1/(Vosteo*F))*(gleakk*(volt-Vlk))*10^3)-(-f_K*(1/(Vosteo*F))*(barg_p2x7*(Q1+Q2+Q3+(1-(D1+D2+D3+D4+C1+C2+Q1+Q2+C4+C3+Q3)))*volt)*10^(3))
+dvolt/dt=(-(gleak*(volt-(-81)))-(((tanh(Cer-ksoc))/2*(volt-(R*temp/(2*F)*log(cao/(Ca*10^(-3)))*10^3))))-(gk*sqrt(Kout)*(volt-(R*temp/(F)*log(Kout/K)*10^3)))-(gnak*Kout/(Kout+Knakko)*Na^1.5/(Na^1.5+Knakna^1.5)*(volt+135.1)/(volt+300))-((1/(1+((kn/Ca)^1.5)))*gncx*(exp(eta*(volt*(10^(-3))*F/(R*temp)))*(Na^3)*cao-exp((eta-1)*(volt*(10^(-3))*F/(R*temp)))*(nao^3)*Ca*1e-3)/(dncx+Na^3*cao+nao^3*Ca*10^(-3)))-(gL*mL*hL*(volt-(R*temp/(2*F)*log(cao/(Ca*10^(-3)))*10^3)))-(gT*mT*hTf*(volt-(R*temp/(2*F)*log(cao/(Ca*10^(-3)))*10^3)))-(barg_p2x7*(Q1+Q2+Q3+(1-(D1+D2+D3+D4+C1+C2+Q1+Q2+C4+C3+Q3)))*volt)-(gleakk*(volt-Vlk)))/(Cm*sur)*100
+dIP3/dt=(alphaatp*(A*1000))/(A*1000+1)-gammaglut*IP3
+
+dh/dt=((((d_2*(IP3+d_1)/(IP3+d_3))/((d_2*(IP3+d_1)/(IP3+d_3))+Ca))-h)/(1/(a2*((d_2*(IP3+d_1)/(IP3+d_3))+Ca))))
+dw/dt=((((ka/(Ca^4)+1+(Ca^3)/kb)/(1/kc+ka/(Ca^4)+1+(Ca^3)/kb))-w)/((((ka/(Ca^4)+1+(Ca^3)/kb)/(1/kc+ka/(Ca^4)+1+(Ca^3)/kb)))/kc))
+dmL/dt=((1/(1+exp(-volt/6)))-mL)/((18*exp(-((volt+45)/20)^2)+10)/10)
+dhL/dt=((1/(1+exp(volt/5)))-hL)/((10*exp(-((volt+100)/10)^2)+20)/10)
+dmT/dt=((1/(1+exp(-(volt+5)/6)))-mT)/(exp(-((volt+5)/6)^2)+2)
+dhTf/dt=((1/(1+exp((volt+5)/10)))-hTf)/(exp(-((volt+5)/10)^2)+2)
+
+dD1/dt=(k1*D2-(3*k2*(10^(A))+H1)*D1)
+dD2/dt=(3*k2*(10^(A))*D1+2*k3*D3+H2*C2-(k1+2*k4*(10^(A))+H3)*D2 )
+dD3/dt=(2*k4*(10^(A))*D2+3*k5*D4+Hat2*Q1-(2*k3+k6*(10^(A)))*D3)
+dD4/dt=(k6*(10^(A))*D3+H4*Q2-3*k5*D4)
+dC1/dt=(H1*D1+k1*C2 +L1*C4-3*k2*(10^(A))*C1)
+dC2/dt=(H3*D2+3*k2*(10^(A))*C1+2*k3*Q1-(k1+2*k4*(10^(A))+H2)*C2)
+dQ1/dt=(2*k4*(10^(A))*C2+3*k5*Q2-(2*k3+k6*(10^(A))+Hat2)*Q1)
+dQ2/dt=(k6*(10^(A))*Q1+L2*Q3-(3*k5+L3+H4)*Q2)
+dC4/dt=(k1*C3-(L1+3*k2*(10^(A)))*C4)
+dC3/dt=(3*k2*(10^(A))*C4+2*k1*(1-(D1+D2+D3+D4+C1+C2+Q1+Q2+C4+C3+Q3))-(k1+2*k2*(10^(A)))*C3)
+dQ3/dt=(k2*(10^(A))*(1-(D1+D2+D3+D4+C1+C2+Q1+Q2+C4+C3+Q3))+L3*Q2-(3*k1+L2)*Q3)
+
+# Parameters
+
+par A=-4 fleak=0 gammaglut=0.01 alphaatp=0.03
+par a2=0.2 barg_p2x7=22.5
+par cao=2.5 Cm=1
+par d_1=0.13 d_2=1.049 d_3=0.9434 d5=0.08234 dncx=4 Delta=-0.031 eta=0.3
+par F=96485.3321 f_Ca=0.046 f_K=0.477 f_Na=0.477 fe=0.05 fi=0.05
+par gamma=9 gk=11.58 gL=0.8 gleak=1 gleakk=2 gT=0.5 gnak=-0.313888 gncx=0.16
+par H1=0.001 H2=0.01 H3=0 H4=0.6 Hat2=0.1 hc3=2
+# par IP3=0.2 ip3base=0.2
+par Jncx_bar=1
+par ka=0.0192 kb=0.2573 kb1=0.2573 kc=0.0571 kca=5
+par K0d_Nae=15.5 K0d_Nai=2.49 Kd=0.43 Kd_Ke=0.213 Kd_ki=0.5 Kd_Mgatp=2.51
+par kmcai=0.0026 kmcao=1.3 kmnao=97.63 kmnai=12.3 kn=0.1 kna=5 Kout=4
+par Knakko=1.32 Knakna=14.5 Kncxca=0.502 Ks=50
+par k1=0.3 k1m=172.1 k1p=1050 k2=1260 k2m=40 k2p=481 k3=2.4
+par k3m=79300 k3p=2000 k3serc=0.3 k4=1575 k4m=40 k4p=320
+par k5=1.58 k6=221 k_pmca=0.8 ksoc=0.939 ksat=0.25 ktau=1 krest=120
+par L1=0.0001 L2=0.004 L3=0.05
+par MgADP=0.06 MgATP=4.99
+par narest=12 nao=140 nH=2.55 nncxh=1.5
+par P=96.4853321 Pca=35 PIa=4.95 Pk=30 Pna=1
+par R=8.314
+par Sm=0.000000025 sur=5000
+par temp=300 tetak=10 tetana=10 tau_o=10 tau_soc=30
+par VCa=100 Vl=-81 vlk=60 v2=0.5 v3=120
+par v_ip3=0.88 v_pmca=0.6 vr=18 vncx=1.4 Vs=0.01252 Vosteo=6.5
+par z=2
+
+# Inital Conditons.
+Ca(0)= 1.128864 # 0.121212
+Cer(0)=25.898965426552827
+h(0)=0.661
+w(0)=0.6605
+Na(0)=12.102
+K(0)=117.07
+volt(0)=-67.65327008405072
+mL(0)=0
+hL(0)=1
+mT(0)=0
+hTf(0)=1
+D1(0)=0
+D2(0)=0
+D3(0)=0
+D4(0)=0
+C1(0)=1
+C2(0)=0
+C3(0)=0
+C4(0)=0
+Q1(0)=0
+Q2(0)=0
+Q3(0)=0
+
+
+# Numerics
+@ TOTAL=400,DT=.005,xlo=0,xhi=250,ylo=-3,yhi=3
+@ NPLOT=1,XP1=t,YP1=Ca
+@ MAXSTOR=10000000
+@ BOUNDS=1000000
+@ dsmin=1e-5,dsmax=0.05,parmin=-10,parmax=1,autoxmin=-8,autoxmax=1
+@ autoymax=2.5,autoymin=-1,Ntst=400,Nmax=2000000,NPr=1000,Ds=0.001,Dsmin=1e-05,EPSL=1e-07,Dsmax=0.05,EPSS=1e-5,EPSU=1e-7
+
+done
