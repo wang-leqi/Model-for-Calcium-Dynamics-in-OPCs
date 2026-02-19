@@ -1,5 +1,5 @@
 
-This GitHub page is associated with [*Calcium Signaling in Oligodendrocyte Precursor Cells Mediated by Spontaneous and Evoked Responses: A Modeling Investigation.*](https://www.biorxiv.org/content/10.1101/2025.08.14.670262v1), a work done in [Khadra Lab, McGill University](https://khadralab.github.io/).
+This GitHub page is associated with [*Calcium Signaling in Oligodendrocyte Precursor Cells Mediated by Spontaneous and Evoked Responses: A Modeling Investigation.*](https://www.biorxiv.org/content/10.1101/2025.08.14.670262v1), a work done by [Khadra Lab, McGill University](https://khadralab.github.io/).
 
  # Modeling OPC calcium 
  ## Subfolders: 
