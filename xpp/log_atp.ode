@@ -3,7 +3,7 @@
 dvolt/dt=(-Ileak-Isoc-Ik-Inak-Incx-Il-It-Ip2x7-Ileak_CaNa)/(Cm*sur)*100
 dCa/dt=fi*(Jip3+Jleak+Jryr-Jserca+Jsocc+Jncxca-Jpmca+Jl+Jt+Jp2x7_Ca)
 dCer/dt=(-gamma*fe*(Jip3+Jleak+Jryr-Jserca))
-dNa/dt=-3*Jncxna-3*Jnak+(Narest-Na)/tetana+Jp2x7_Na+Jleak_Na
+dNa/dt=3*Jncxna-3*Jnak+(Narest-Na)/tetana+Jp2x7_Na+Jleak_Na
 # dNa/dt=-3*Jncxna-3*Jnak+(Narest-Na)/tetana
 dK/dt=2*Jnak+(Krest-K)/tetak+Jk-Jp2x7_K
 # dK/dt=2*Jnak+(Krest-K)/tetak+Jk-Jp2x7_K+Jleak_Na
@@ -64,7 +64,7 @@ Jt=-alpha*It*10^6
 hinf=(d_2*(IP3+d_1)/(IP3+d_3))/((d_2*(IP3+d_1)/(IP3+d_3))+Ca)
 winf=(ka/(Ca^4)+1+(Ca^3)/kb)/(1/kc+ka/(Ca^4)+1+(Ca^3)/kb)
 
-Jncxna=alpha*Incx*10^3
+Jncxna=-alpha*Incx*10^3
 
 Inak=gnak*Kout/(Kout+Knakko)*Na^1.5/(Na^1.5+Knakna^1.5)*(volt+135.1)/(volt+300)
 Jnak=-alpha*Inak*10^3

@@ -78,7 +78,7 @@ Jt=-alpha*It*10^6
 hinf=(d_2*(IP3+d_1)/(IP3+d_3))/((d_2*(IP3+d_1)/(IP3+d_3))+Ca)
 winf=(ka/(Ca^4)+1+(Ca^3)/kb)/(1/kc+ka/(Ca^4)+1+(Ca^3)/kb)
 
-Jncxna=alpha*Incx*10^3
+Jncxna=-alpha*Incx*10^3
 
 Inak=gnak*Kout/(Kout+Knakko)*Na^1.5/(Na^1.5+Knakna^1.5)*(volt+135.1)/(volt+300)
 Jnak=-alpha*Inak*10^3
