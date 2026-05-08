@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.io import savemat, loadmat
 from numba import jit
 from scipy import stats
 from scipy.optimize import curve_fit
@@ -14,16 +15,16 @@ from sklearn.cluster import KMeans
 class StabilityError(Exception):
     pass
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initial conditions
               dt = 0.01,                                        # time step
               dx = 0.01,                                        # space step
-              tmax = 900,                                       # total time
-              m = 5,                                            # spatial discretizations
+              tmax = 300,                                       # total time
+              # m = 8,                                            # spatial discretizations
               tau_c = 0.01,                                     # Ornstein-Uhlenbeck time constant
               D = 0.4,                                          # Diffusion for IP3
-              Vs = 0.01252 ,                                     # Max conductane SOCE (0.0301)
-              rho = 0.00005,                                    # Diffusion for PDE
+              Vs = 0.01252 ,                                    # Max conductane SOCE (0.0301)
+              rho = 4,                                          # Diffusion for PDE
               v3 = 120,
               vr = 18,
               seed = 9,
@@ -33,12 +34,12 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
               vncx = 1.4,
               Vmean=-60,
               eta = 0.3, #0.483,
-              ATP=0*10**(-3), #ATP in M if rdm ATP==True
-              ATP_start=0, #start time of the ATP signal
-              ATP_time=0, #in s duration of the ATP signal
-              Glut_start=0, #start time of the glutamate signal
+              ATP=0*10**(-3), # ATP in M if rdm ATP==True
+              ATP_start=60, #start time of the ATP signal
+              ATP_time=180, #in s duration of the ATP signal
+              Glut_start=60, #start time of the glutamate signal
               G=0*0.1*10**(-3), #gxlutamate in M if rdmGlut==True 
-              Glut_time=0, #duration of the glutamate signal
+              Glut_time=180, #duration of the glutamate signal
               rdmATP=False, #if True, add a random ATP signal
               rdmGlut=False,  #if True, add a random Glutamate signal
               gL=0.8, #L-type 
@@ -49,7 +50,8 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
               mode=0,
               v2 = 0.5 ,
               ):
-    
+    cell_length = 8 # micro meter
+    m = int(cell_length / dx)
     # Random seed
     #np.random.seed(seed)
     # Simulation parameters
@@ -57,6 +59,10 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
     n = len(tspan)  
     print(n) 
     r = rho*dt/(dx**2)
+    print("r="+str(r))
+    print("rho=" + str(rho))
+    print("dt=" + str(dt))
+    print("dx=" + str(dx))
     if r >= 0.5:
         raise StabilityError('The value rho*dt/(dx**2) must be < 0.5 to ensure numerical stability!')
       
@@ -302,8 +308,14 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
     def Jleak(Ca, Cer): 
         return v2 * (Cer - Ca)
     
+    def Jleak_ex(Ca):
+        Ca_ex = 2500
+        v_ex_cyto = 0.000016
+        return v_ex_cyto * (Ca_ex - Ca)
+    
     
     def Jryr(Ca, Cer, w): 
+        # return 0
         return vr * w * (1 + (Ca**3) / kb1) / (ka / (Ca**4) + 1 + (Ca**3) / kb1) * (Cer - Ca)
     
     def ninfi(Ca): 
@@ -336,7 +348,7 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
     def Jncxna(Ca, Na, volt):
 
         alphana=1/(Vosteo*F)
-        return alphana*Incx(Ca, Na, volt)*10**3
+        return -alphana*Incx(Ca, Na, volt)*10**3
     
 
 
@@ -426,7 +438,7 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
 
     ####scheme###
     def dCa_dt(Ca, Cer, h, s, w, Na, K, Q1, Q2, Q3, Q4,O,On,IP3,volt,mL,mT,hTf,hL):
-        return fi * (Jip3(Ca, Cer, h,IP3)+Jleak(Ca, Cer)+Jryr(Ca, Cer, w)-Jserca(Ca)+ Jp2x7_Ca(Ca,Na,K, Q1, Q2, Q3, Q4, volt)+Jsoc(Ca,Cer,volt)+ Jncxca(Ca,Na ,volt)- Jpmca(Ca)+Jnmda_Ca(On, Ca, Na, K,volt)+Jampa_Ca(O, Ca, Na, K,volt)+Jt(Ca,mT,hTf,volt)+Jl(Ca,mL,hL,volt))+Jleak_Ca(volt)
+        return fi * (Jip3(Ca, Cer, h,IP3)+Jleak(Ca, Cer)+Jleak_ex(Ca)+Jryr(Ca, Cer, w)-Jserca(Ca)+ Jp2x7_Ca(Ca,Na,K, Q1, Q2, Q3, Q4, volt)+Jsoc(Ca,Cer,volt)+ Jncxca(Ca,Na ,volt)- Jpmca(Ca)+Jnmda_Ca(On, Ca, Na, K,volt)+Jampa_Ca(O, Ca, Na, K,volt)+Jt(Ca,mT,hTf,volt)+Jl(Ca,mL,hL,volt))+Jleak_Ca(volt)
     
     def dNa(Ca, Cer ,K,Na,volt,O,On,Q1,Q2,Q3,Q4,Kout):
         return -3*Jncxna(Ca,Na,volt)-3*Jnak(Ca, Na, K,volt,Kout)+Jp2x7_Na(Ca, Na, K, Q1, Q2, Q3, Q4,volt)+Jr(Na)+Jnmda_Na(On, Ca, Na, K,volt)+Jampa_Na(O, Ca, Na, K,volt)+Jleak_Na(volt)
@@ -480,13 +492,17 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
     Ko[0]=Kout
     
     saveA=np.zeros(n)
+    trace = 0
+    rdn = 0
     for k in range(n-1):
-        if k<ATP_start*100:
+        current_time = k * dt
+        if current_time<ATP_start:
             A=0
-        elif k>ATP_start*100+ATP_time*100:
+        elif current_time>ATP_start+ATP_time:
             A=0
         else:
             A=ATP
+
         if rdmATP==True:
             if np.random.binomial(1, 0.001)==1:#0.001 0.0025 0.005
                     trace=k
@@ -495,9 +511,9 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
             if k<trace+10:
                     A=rdn
         saveA[k]=A
-        if k<Glut_start*100:
+        if current_time<Glut_start:
             Glut=0
-        elif k>Glut_start*100+Glut_time*100:
+        elif current_time>Glut_start+Glut_time:
             Glut=0
         else:
             Glut=G
@@ -538,12 +554,12 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
             Ko[k + 1]= Kout
 
         #AMPA
-        C0a[k + 1 ] = C0a[k ]+(-Rb*Glut/tota*C0a[k]+Ru1/tota*C1a[k  ])*dt
-        C1a[k + 1 ] = C1a[k ]+(Rr/tota*D1a[k ]+Ru2/tota*C2a[k ]+Rb*Glut/tota*C0a[k  ]-(Rd+Ru1+Rb*Glut)/tota*C1a[k ])*dt
-        C2a[k + 1 ] = C2a[k ]+(Rc/tota*O[k ]+Rr/tota*D2a[k ]+Rb*Glut/tota*C1a[k ]-(Rd+Ru2+R0)/tota*C2a[k ])*dt
-        O[k + 1 ] = O[k ]+(R0/tota*C2a[k ]-Rc/tota*O[k ])*dt
-        D1a[k + 1 ] = D1a[k ]+(Rd/tota*C1a[k ]-Rr/tota*D1a[k])*dt
-        D2a[k + 1 ] = D2a[k ]+(Rd/tota*C2a[k ]-Rr/tota*D2a[k])*dt
+        C0a[k + 1] = C0a[k]+(-Rb*Glut/tota*C0a[k]+Ru1/tota*C1a[k])*dt
+        C1a[k + 1] = C1a[k]+(Rr/tota*D1a[k]+Ru2/tota*C2a[k]+Rb*Glut/tota*C0a[k]-(Rd+Ru1+Rb*Glut)/tota*C1a[k])*dt
+        C2a[k + 1] = C2a[k]+(Rc/tota*O[k]+Rr/tota*D2a[k]+Rb*Glut/tota*C1a[k]-(Rd+Ru2+R0)/tota*C2a[k])*dt
+        O[k + 1] = O[k ]+(R0/tota*C2a[k]-Rc/tota*O[k])*dt
+        D1a[k + 1] = D1a[k]+(Rd/tota*C1a[k]-Rr/tota*D1a[k])*dt
+        D2a[k + 1] = D2a[k]+(Rd/tota*C2a[k]-Rr/tota*D2a[k])*dt
         
         #NMDA
         C0n[k + 1 ] = C0n[k ]+(-Rbn/totn*Glut*C0n[k  ]+Run/totn*C1n[k])*dt
@@ -567,8 +583,8 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
     
     for k in range(n-1):#range(n-1):
         # BCs: Neumann (∂C/∂t = 0) at x₁ and xₘ
-        
-        
+        print("time:"+str(k))
+
         mL=(1.4135e-5-barmL(volt[k, 0]))*np.exp(-k*dt/taumL(volt[k, 0]))+barmL(volt[k, 0])
         hL=(0.999998-barhL(volt[k, 0]))*np.exp(-k*dt/tauhL(volt[k, 0]))+barhL(volt[k, 0])
 
@@ -589,7 +605,6 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
         Na[k + 1, m-1]   = 2 * r * Na[k, m-2]   + (1 - 2*r) * Na[k, m-1]   + dNa(Ca[k, m-1],Cer[k, m-1], K[k, m-1],Na[k, m-1],volt[k, m-1],O[k],On[k],Q1[k],Q2[k],Q3[k],Q4[k],Ko[k]) * dt
         K[k + 1,  m-1]   = 2*  r * K[k,  m-2]   + (1 - 2*r) * K[k, m-1]    + dK(Ca[k, m-1],K[k, m-1],Na[k, m-1],volt[k, m-1],O[k],On[k],Q1[k],Q2[k],Q3[k],Q4[k],Ko[k])*dt
         for i in range(m):
-
             mL=(1.2135e-5-barmL(volt[k, i]))*np.exp(-k*dt/taumL(volt[k, i]))+barmL(volt[k, i])
             hL=(0.999998-barhL(volt[k, i]))*np.exp(-k*dt/tauhL(volt[k, i]))+barhL(volt[k, i])
             
@@ -614,14 +629,14 @@ def SPDE_solver(ICs = [0.16, 30.0, 0.64, 0.88, 0.61, 0.12, 13.0, 0.0],  # Initia
             volt[k + 1, i]= volt[k, i] + fvolt(Ca[k, i], Cer[k,i],K[k, i],Na[k, i],volt[k, i],O[k],On[k],Q1[k],Q2[k],Q3[k],Q4[k],mT,hTf,mL,hL,Ko[k])*dt
 
             
-            eta_u[k + 1, i] = eta_u[k, i] + (-eta_u[k, i]/tau_c) * dt + np.sqrt(2*D/tau_c) * noise_term[k, i]
+            eta_u[k + 1, i] = eta_u[k, i] + (-eta_u[k, i] / tau_c) * dt + np.sqrt(2*D/tau_c) * noise_term[k, i]
+            # eta_u[k + 1, i] = eta_u[k, i] + (-eta_u[k, i] / tau_c) * dt + np.sqrt(2 * D / tau_c * dt) * noise_term[k, i]
 
-     
     if np.isnan(Ca[4, 1]):
         print('!!! NaN value !!')
         Ca=np.zeros((8,2))
     # return Ca, volt, Na, Cer, h, w, x, K, Jsoc(Ca.T[4],Cer.T[4],volt.T[4]), Jleak(Ca.T[4], Cer.T[4]),Jip3(Ca.T[4], Cer.T[4], h.T[4],IP3.T[4]), Jryr(Ca.T[4], Cer.T[4], w.T[4]), Jl(Ca.T[4],saveL,savehL,volt.T[4]), Jt(Ca.T[4],saveT,saveTf,volt.T[4]), Jp2x7_Ca(Ca.T[4], Na.T[4], K.T[4], Q1, Q2, Q3, Q4,volt.T[4]), Jampa_Ca(O, Ca.T[4], Na.T[4], K.T[4],volt.T[4]), Jnmda_Ca(On, Ca.T[4], Na.T[4], K.T[4],volt.T[4]), IP3
-    return Ca, volt, Na, Cer, h, w, x, K, Jsoc(Ca.T[4],Cer.T[4],volt.T[4]), Jleak(Ca.T[4], Cer.T[4]),Jip3(Ca.T[4], Cer.T[4], h.T[4],IP3.T[4]), Jryr(Ca.T[4], Cer.T[4], w.T[4]), Jl(Ca.T[4],saveL,savehL,volt.T[4]), Jt(Ca.T[4],saveT,saveTf,volt.T[4]), Jp2x7_Ca(Ca.T[4], Na.T[4], K.T[4], Q1, Q2, Q3, Q4,volt.T[4]), Jampa_Ca(O, Ca.T[4], Na.T[4], K.T[4],volt.T[4]), Jnmda_Ca(On, Ca.T[4], Na.T[4], K.T[4],volt.T[4]), IP3
+    return Ca, volt, Na, Cer, eta_u, h, w, x, K, Jsoc(Ca.T[4],Cer.T[4],volt.T[4]), Jncxca(Ca.T[4], Na.T[4], volt.T[4]), Jleak(Ca.T[4], Cer.T[4]),Jleak_ex(Ca.T[4]), Jip3(Ca.T[4], Cer.T[4], h.T[4],IP3.T[4]), Jryr(Ca.T[4], Cer.T[4], w.T[4]), Jl(Ca.T[4],saveL,savehL,volt.T[4]), Jt(Ca.T[4],saveT,saveTf,volt.T[4]), Jp2x7_Ca(Ca.T[4], Na.T[4], K.T[4], Q1, Q2, Q3, Q4,volt.T[4]), Jampa_Ca(O, Ca.T[4], Na.T[4], K.T[4],volt.T[4]), Jnmda_Ca(On, Ca.T[4], Na.T[4], K.T[4],volt.T[4]), IP3
 
 m=8
 tmax=300
@@ -664,159 +679,108 @@ C1n=0
 C2n=0
 On=0
 D2n=0
-    
 
 
-# def multsimu(temp):
-#     Ca=temp[0].T[4]
-#     volt=temp[1].T[4]
-
-#     print(np.mean(Ca)+np.std(Ca))
-#     t=np.linspace(0,tmax,len(Ca))
-    
-#     # Figure 1: Ca plot
-#     plt.figure(figsize=(8, 5))
-#     plt.plot(t,Ca)
-#     plt.ylim(0,2)
-#     plt.plot(t,np.ones(len(t))*0.11)
-#     plt.ylim(0,1.2)
-#     plt.savefig('Caatp.svg',format='svg')
-#     plt.show()
-    
-#     # Figure 2: Voltage plot
-#     plt.figure(figsize=(8, 5))
-#     plt.plot(volt)
-#     #plt.plot(t,np.ones(len(t))*0.08644637533710929)
-#     #plt.ylim()
-#     plt.ylim(-72,-70.5)
-#     plt.savefig('volt.svg',format='svg')
-#     plt.show()
-    
-    # Figure 3: Subplots
-    # Jsoc=temp[8].T
-    # Jleak=temp[9].T
-    # Jip3=temp[10].T
-    # Jryr=temp[11].T
-    # Jt_l=temp[12].T[1000:-1]
-    # Jp2x7=temp[13].T
-    # Jampa=temp[-3].T
-    # Jnmda=temp[-2].T
-    # IP3=temp[-1].T
-    
-    # plt.figure(figsize=(12, 8))
-    # plt.subplot(231)
-    # plt.plot(t,Jsoc)
-    # plt.ylim(-9e-5,-6e-5)
-    # plt.subplot(232)
-
-    # plt.plot(t,Jip3+Jryr)
-    # #plt.plot(t,np.ones(len(t))*0.08644637533710929)
-    # plt.subplot(233)
-
-    # plt.plot(t[1000:-1],Jt_l)
-    # #plt.plot(t,np.ones(len(t))*0.08644637533710929)
-
-    # plt.subplot(234)
-
-    # plt.plot(t,Jp2x7)
-    # #plt.plot(t,np.ones(len(t))*0.08644637533710929)
-
-    # plt.subplot(235)
-
-    # plt.plot(t,Jnmda+Jnmda)
-    # #plt.plot(t,np.ones(len(t))*0.08644637533710929)
-
-    # plt.subplot(236)
-
-    # plt.plot(t,IP3)
-    # #plt.plot(t,np.ones(len(t))*0.08644637533710929)
-    # plt.savefig('Subplot_WT.svg',format='svg')
-    # plt.show()  
-    
 F = 96485.3321
 Vosteo=6.5
 aa=time.time()
 ICs = np.array([Ca, Cer, h, s, w, x, Na , K, eta_u, D1, D2, D3, D4, C1, C2, C3, C4, Q1, Q2, Q3, Q4, C0a, C1a, C2a, O, D1a, D2a, C0n, C1n, C2n, On, D2n,volt])
-# temp=SPDE_solver(ICs,m=m,tmax=tmax)  
-# multsimu(temp)
 
-######################
-# ============================================================
-# Fig 2 reproduction of VGCC currents; 
-# ============================================================
-# np.random.seed(2) 
-# temp = SPDE_solver(ICs)
-
-# Jl = temp[12]
-# Il = -Jl*2*Vosteo*F/1000000
-# Jt = temp[13]
-# It = -Jt*2*Vosteo*F/1000000
-# time = np.arange(len(Jl))  # create time array using your dt timestep
-# fig, ax = plt.subplots(figsize=(10, 6))
-# ax.plot(time, Il, label='Il (L-type current)', linewidth=2)
-# ax.plot(time, It, label='It (T-type current)', linewidth=2)
-# ax.set_xlabel('Time (s)')
-# ax.set_ylabel('Current (pA)')
-# ax.set_title('L-type and T-type Calcium Currents')
-# ax.legend()
-# ax.grid(True, alpha=0.3)
-# plt.tight_layout()
-# plt.savefig('figures/Il_It_timeseries.pdf', dpi=300, bbox_inches='tight')
+dt = 0.01 
+dx = 1
+temp = SPDE_solver(ICs, dt=dt, dx=dx, ATP = 0.1*10**(-3))
+# Ca = temp[0].T[4]
+# time = np.arange(len(Ca)) * dt
+# plt.plot(time, Ca)
+# plt.xlabel('Time (s)')
+# plt.ylabel('Ca')
+# plt.title('Calcium Dynamics')
+# plt.grid(True, alpha=0.3)
+# plt.ylim(0,8)
 # plt.show()
 
+# # Calculate Eca
+# R = 8.314
+# T = 300
+# Caout = 2.5
+# Eca = R*T/(2*F)*np.log(Caout/(Ca_time*10**-3))*10**3
+
+# fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+
+# ax1.plot(time, Jncxca, linewidth=2, color='blue')
+# ax1.set_ylabel('Jncxca (µM·s⁻¹)', fontsize=11)
+# ax1.set_title('NCX Ca Flux')
+# ax1.grid(True, alpha=0.3)
+
+# ax2.plot(time, Eca, linewidth=2, color='red')
+# ax2.set_ylabel('Eca (mV)', fontsize=11)
+# ax2.set_xlabel('Time (s)', fontsize=11)
+# ax2.set_title('Nernst Potential for Ca')
+# ax2.grid(True, alpha=0.3)
+
+# plt.tight_layout()
+# plt.show()
+
+
+
+######################
+
+
+
+
 # ============================================================
-# Fig 9 reproduction, in vivo condition when apply ATP, Glut = 0; 
+# Fig 9 reproduction, in vivo condition when apply ATP, Glut = 0;
 # ============================================================
-np.random.seed(2) 
-temp = SPDE_solver(ICs, rdmATP=True, tmax = 300)
-Jsoc = temp[8]
-Jip3 =temp[10]
-Jryr = temp[11]
-Jl = temp[12]
-Jt = temp[13]
-Jp2x7 = temp[14]
-Jampa = temp[-3]
-Jnmda = temp[-2]
-ip3 = temp[-1]
+# np.random.seed(2)
+# temp = SPDE_solver(ICs, dx = dx, dt = dt,rdmATP=True, tmax = 300)
+# Jsoc = temp[8]
+# Jip3 =temp[10]
+# Jryr = temp[11]
+# Jl = temp[12]
+# Jt = temp[13]
+# Jp2x7 = temp[14]
+# Jampa = temp[-3]
+# Jnmda = temp[-2]
+# ip3 = temp[-1]
 
-time = np.arange(len(Jsoc))  # create time array using your dt timestep
+# time = np.arange(len(Jsoc))  # create time array using your dt timestep
 
-fig, axs = plt.subplots(2, 3)
-axs[0,0].plot(time, Jsoc, linewidth=2)
-axs[0,0].set_ylabel(r'$\mathrm{J_{SOCE}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-axs[0,0].text(-0.15, 1.1, 'A', transform=axs[0,0].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-axs[0,1].plot(time, Jip3+Jryr, linewidth=2)
-axs[0,1].set_ylabel(r'$\mathrm{J_{CICR}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-axs[0,1].text(-0.15, 1.1, 'B', transform=axs[0,1].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-axs[0,2].plot(time[2000:29000], Jl[2000:29000]+Jt[2000:29000], linewidth=2)
-axs[0,2].set_ylabel(r'$\mathrm{J_{VGCC}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-axs[0,2].text(-0.15, 1.1, 'C', transform=axs[0,2].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-axs[1,0].plot(time, Jp2x7, linewidth=2)
-axs[1,0].set_ylabel(r'$\mathrm{J_{P2X7}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-axs[1,0].text(-0.15, 1.1, 'D', transform=axs[1,0].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-axs[1,1].plot(time, Jampa+Jnmda, linewidth=2)
-axs[1,1].set_ylabel(r'$\mathrm{J_{Syn}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-axs[1,1].text(-0.15, 1.1, 'E', transform=axs[1,1].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-axs[1,2].plot(time, ip3, linewidth=2)
-axs[1,2].set_ylabel(r'$\mathrm{[IP_3](mM)}$', fontsize=11)
-axs[1,2].text(-0.15, 1.1, 'F', transform=axs[1,2].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
+# fig, axs = plt.subplots(2, 3)
+# axs[0,0].plot(time, Jsoc, linewidth=2)
+# axs[0,0].set_ylabel(r'$\mathrm{J_{SOCE}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
+# axs[0,0].text(-0.15, 1.1, 'A', transform=axs[0,0].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
+# axs[0,1].plot(time, Jip3+Jryr, linewidth=2)
+# axs[0,1].set_ylabel(r'$\mathrm{J_{CICR}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
+# axs[0,1].text(-0.15, 1.1, 'B', transform=axs[0,1].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
+# axs[0,2].plot(time[2000:29000], Jl[2000:29000]+Jt[2000:29000], linewidth=2)
+# axs[0,2].set_ylabel(r'$\mathrm{J_{VGCC}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
+# axs[0,2].text(-0.15, 1.1, 'C', transform=axs[0,2].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
+# axs[1,0].plot(time, Jp2x7, linewidth=2)
+# axs[1,0].set_ylabel(r'$\mathrm{J_{P2X7}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
+# axs[1,0].text(-0.15, 1.1, 'D', transform=axs[1,0].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
+# axs[1,1].plot(time, Jampa+Jnmda, linewidth=2)
+# axs[1,1].set_ylabel(r'$\mathrm{J_{Syn}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
+# axs[1,1].text(-0.15, 1.1, 'E', transform=axs[1,1].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
+# axs[1,2].plot(time, ip3, linewidth=2)
+# axs[1,2].set_ylabel(r'$\mathrm{[IP_3](mM)}$', fontsize=11)
+# axs[1,2].text(-0.15, 1.1, 'F', transform=axs[1,2].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
 
-# Remove boxes and configure axes
-for i, ax in enumerate(axs.flat):
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    # Format y-axis with scientific notation
-    ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    ax.set_xticks(np.arange(0, 40000, 10000))
-    # Set x-axis label only on bottom row
-    if i >= 3:
-        ax.set_xlabel('Time (s)', fontsize=12)
-        ax.set_xticklabels(['0', '100', '200', '300'])
-    else:
-        ax.set_xticklabels([])
-plt.subplots_adjust(wspace=0.3)
-plt.savefig('figures/vivo_atp.pdf')
-plt.show()
+# # Remove boxes and configure axes
+# for i, ax in enumerate(axs.flat):
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+#     # Format y-axis with scientific notation
+#     ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+#     ax.set_xticks(np.arange(0, 40000, 10000))
+#     # Set x-axis label only on bottom row
+#     if i >= 3:
+#         ax.set_xlabel('Time (s)', fontsize=12)
+#         ax.set_xticklabels(['0', '100', '200', '300'])
+#     else:
+#         ax.set_xticklabels([])
+# plt.subplots_adjust(wspace=0.3)
+# plt.savefig('figures/vivo_atp.pdf')
+# plt.show()
 
 # ============================================================
 # Fig 11 reproduction, in vivo condition when apply Glut, ATP = 0; 
@@ -855,60 +819,6 @@ plt.show()
 # axs[1,2].text(-0.15, 1.1, 'F', transform=axs[1,2].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
 
 # Remove boxes and configure axes
-for i, ax in enumerate(axs.flat):
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    # Format y-axis with scientific notation
-    ax.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
-    ax.set_xticks(np.arange(0, 40000, 10000))
-    # Set x-axis label only on bottom row
-    if i >= 3:
-        ax.set_xlabel('Time (s)', fontsize=12)
-        ax.set_xticklabels(['0', '100', '200', '300'])
-    else:
-        ax.set_xticklabels([])
-plt.subplots_adjust(wspace=0.3)
-plt.savefig('figures/vivo_glut.pdf')
-plt.show()
-
-# ============================================================
-# Fig S3 reproduction,  
-# ============================================================
-# np.random.seed(2) 
-# temp = SPDE_solver(ICs, tmax=300)
-# Ca = temp[0].T[4]
-# Jsoc = temp[8]
-# Jip3 =temp[10]
-# Jryr = temp[11]
-# Jl = temp[12]
-# Jt = temp[13]
-# Jp2x7 = temp[14]
-# Jampa = temp[-3]
-# Jnmda = temp[-2]
-# ip3 = temp[-1]
-# time = np.arange(len(Jsoc))  # create time array using your dt timestep
-
-# fig, axs = plt.subplots(2, 3)
-# axs[0,0].plot(time, Jsoc, linewidth=2)
-# axs[0,0].set_ylabel(r'$\mathrm{J_{SOCE}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-# axs[0,0].text(-0.15, 1.1, 'A', transform=axs[0,0].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-# axs[0,1].plot(time, Jip3+Jryr, linewidth=2)
-# axs[0,1].set_ylabel(r'$\mathrm{J_{CICR}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-# axs[0,1].text(-0.15, 1.1, 'B', transform=axs[0,1].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-# axs[0,2].plot(time[2000:29000], Jl[2000:29000]+Jt[2000:29000], linewidth=2)
-# axs[0,2].set_ylabel(r'$\mathrm{J_{VGCC}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-# axs[0,2].text(-0.15, 1.1, 'C', transform=axs[0,2].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-# axs[1,0].plot(time, Jp2x7, linewidth=2)
-# axs[1,0].set_ylabel(r'$\mathrm{J_{P2X7}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-# axs[1,0].text(-0.15, 1.1, 'D', transform=axs[1,0].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-# axs[1,1].plot(time, Jampa+Jnmda, linewidth=2)
-# axs[1,1].set_ylabel(r'$\mathrm{J_{Syn}}$ ($\mu M \cdot s^{-1}$)', fontsize=11)
-# axs[1,1].text(-0.15, 1.1, 'E', transform=axs[1,1].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-# axs[1,2].plot(time, ip3, linewidth=2)
-# axs[1,2].set_ylabel(r'$\mathrm{[IP_3](mM)}$', fontsize=11)
-# axs[1,2].text(-0.15, 1.1, 'F', transform=axs[1,2].transAxes, fontsize=14, fontweight='bold', va='top', ha='left')
-
-# # Remove boxes and configure axes
 # for i, ax in enumerate(axs.flat):
 #     ax.spines['top'].set_visible(False)
 #     ax.spines['right'].set_visible(False)
@@ -922,130 +832,8 @@ plt.show()
 #     else:
 #         ax.set_xticklabels([])
 # plt.subplots_adjust(wspace=0.3)
-# plt.savefig('figures/vivo_no_atp_no_glut.pdf')
+# plt.savefig('figures/vivo_glut.pdf')
 # plt.show()
 
-#####################
-# ============================================================
-# Fig 5 C reproduction of different ATP concentrations; 
-# ============================================================
-
-# def normalize_01(x):
-#     x = np.asarray(x)
-#     return (x - x.min()) / (x.max() - x.min() + 1e-12)
 
 
-# def normalize_dff(x, baseline_frames=100):
-#     """Normalize using ΔF/F0, where F0 is the baseline (mean of initial frames)"""
-#     x = np.asarray(x)
-#     F0 = np.mean(x[:baseline_frames])  # baseline is mean of first N frames
-#     return (x - F0) / (F0)
-
-# def run_ensemble_stepATP(ICs, n_iter=50, seed0=9, m=m, tmax=tmax, dt=0.01,
-#                          ATP_M=0.043*10**(-3), ATP_start=60, ATP_time=180, idx=4):
-#     traces = []
-#     # np.random.seed(seed0)
-#     _ = SPDE_solver(ICs, m=m, tmax=1.0, dt=dt, ATP=ATP_M, ATP_start=ATP_start, ATP_time=ATP_time)
-
-#     for i in range(n_iter):
-#         seed = seed0 + i
-#         np.random.seed(seed)
-
-#         temp = SPDE_solver(ICs, m=m, tmax=tmax, dt=dt,
-#                            ATP=ATP_M, ATP_start=ATP_start, ATP_time=ATP_time)
-
-#         ca = temp[0].T[idx] # midpoint Ca
-#         ca = normalize_01(ca)
-#         # ca = normalize_dff(ca) # ΔF/F0 normalization
-#         traces.append(ca)
-
-#     traces = np.asarray(traces)
-#     t = np.linspace(0, tmax, traces.shape[1])
-#     return t, traces
-
-# def plot_many(t, traces, ATP_start=60, ATP_end=240, max_to_plot=None):
-#     plt.figure(figsize=(10, 5))
-
-#     if max_to_plot is None or max_to_plot >= traces.shape[0]:
-#         idxs = range(traces.shape[0])
-#     else:
-#         idxs = range(max_to_plot)
-
-#     for k in idxs:
-#         plt.plot(t, traces[k], lw=0.8, alpha=0.15)  # low alpha is key
-
-#     plt.axvline(ATP_start, ls="--")
-#     plt.axvline(ATP_end, ls="--")
-
-#     plt.xlabel("Time (s)")
-#     plt.ylabel("ΔF/F0")
-#     plt.tight_layout()
-#     plt.tight_layout()
-#     plt.show()
-
-# # ---- run + plot (this should look much closer to Fig 5A style) ----
-# t, traces = run_ensemble_stepATP(ICs, n_iter=50, seed0=9,
-#                                  ATP_M=0.043*10**(-3), ATP_start=60, ATP_time=180, idx=4)
-# plot_many(t, traces, ATP_start=60, ATP_end=180, max_to_plot=50)
-
-# ============================================================
-# Fig 6 C reproduction of different glut concentrations; 
-# ============================================================
-
-# def normalize_01(x):
-#     x = np.asarray(x)
-#     return (x - x.min()) / (x.max() - x.min() + 1e-12)
-
-
-# def normalize_dff(x, baseline_frames=60):
-#     """Normalize using ΔF/F0, where F0 is the baseline (mean of initial frames)"""
-#     x = np.asarray(x)
-#     F0 = np.mean(x[:baseline_frames])  # baseline is mean of first N frames
-#     return (x - F0) / (F0)
-
-# def run_ensemble_stepGlut(ICs, n_iter=50, seed0=9, m=m, tmax=tmax, dt=0.01,
-#                          Glut_M=0.05*10**(-3), Glut_start=60, Glut_time=120, idx=4):
-#     traces = []
-#     # np.random.seed(seed0)
-#     _ = SPDE_solver(ICs, m=m, tmax=1.0, dt=dt, G=Glut_M, Glut_start=Glut_start, Glut_time=Glut_time)
-
-#     for i in range(n_iter):
-#         seed = seed0 + i
-#         np.random.seed(seed)
-
-#         temp = SPDE_solver(ICs, m=m, tmax=tmax, dt=dt,
-#                            G=Glut_M, Glut_start=Glut_start, Glut_time=Glut_time)
-
-#         ca = temp[0].T[idx] # midpoint Ca
-#         ca = normalize_01(ca)
-#         # ca = normalize_dff(ca) # ΔF/F0 normalization
-#         traces.append(ca)
-
-#     traces = np.asarray(traces)
-#     t = np.linspace(0, tmax, traces.shape[1])
-#     return t, traces
-
-# def plot_many(t, traces, Glut_start=60, Glut_end=240, max_to_plot=None):
-#     plt.figure(figsize=(10, 5))
-
-#     if max_to_plot is None or max_to_plot >= traces.shape[0]:
-#         idxs = range(traces.shape[0])
-#     else:
-#         idxs = range(max_to_plot)
-
-#     for k in idxs:
-#         plt.plot(t, traces[k], lw=0.8, alpha=0.15)  # low alpha is key
-
-#     plt.axvline(Glut_start, ls="--")
-#     plt.axvline(Glut_end, ls="--")
-
-#     plt.xlabel("Time (s)")
-#     plt.ylabel("ΔF/F0")
-#     plt.tight_layout()
-#     plt.tight_layout()
-#     plt.show()
-
-# # ---- run + plot (this should look much closer to Fig 5A style) ----
-# t, traces = run_ensemble_stepGlut(ICs, n_iter=50, seed0=9,
-#                                  Glut_M=0.05*10**(-3), Glut_start=60, Glut_time=120, idx=4)
-# plot_many(t, traces, Glut_start=60, Glut_end=240, max_to_plot=50)

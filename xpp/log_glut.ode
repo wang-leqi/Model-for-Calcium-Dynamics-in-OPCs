@@ -6,8 +6,8 @@
 # dK/dt=2*Jnak+(Krest-K)/tetak+Jk-Jnmda_K-Jampa_K
 # dvolt/dt=(-Iampa-Inmda-Ileak-Isoc-Ik-Inak-Incx-Il-It-Ileak_CaNa)/(Cm*sur)*100
 
+dCa/dt=fi*(Jip3+Jleak+Jryr-Jserca+Jsocc+Jncxca-Jpmca+Jl+Jt+Jnmda_Ca+Jampa_Ca+Jleak_ex)
 dvolt/dt=(-Iampa-Inmda-Ileak-Isoc-Ik-Inak-Incx-Il-It-Ileak_CaNa)/(Cm*sur)*100
-dCa/dt=fi*(Jip3+Jleak+Jryr-Jserca+Jsocc+Jncxca-Jpmca+Jl+Jt+Jnmda_Ca+Jampa_Ca)
 dCer/dt=(-gamma*fe*(Jip3+Jleak+Jryr-Jserca))
 dNa/dt=-3*Jncxna-3*Jnak+(Narest-Na)/tetana+Jleak_Na+Jnmda_Na+Jampa_Na
 dK/dt=2*Jnak+(Krest-K)/tetak+Jk-Jnmda_K-Jampa_K
@@ -49,6 +49,7 @@ Ileak_CaNa=gleak_na*(volt-Vl_na)
 # Jleak_Ca=-fleak*(1/(2*Vosteo*F))*Ileak_CaNa*10**6
 Jleak_Na=-(1-fleak)*alpha*Ileak_CaNa*10**3
 Ileak=gleak*(volt-Vl)
+Jleak_ex = v_ex_cyto * (Ca_ex - Ca)
 
 minf=IP3/(IP3+d_1)
 ninf=Ca/(Ca+d5)
@@ -58,9 +59,9 @@ Jryr=vr*w*(1+(Ca^3)/kb1)/(ka/(Ca^4)+1+(Ca^3)/kb1)*(Cer-Ca)
 Jserca=v3*(Ca^hc3)/((k3serc^hc3)+(Ca^hc3))
 alphaca=1/(2*Vosteo*F)
 Eca=R*temp/(2*F)*log(cao/(Ca*10^(-3)))*10^3
-barvs=2*Vs/((-67-Eca)*alphaca)
-Isoc=(tanh(Cer-ksoc))/2*(volt-Eca)
-Jsocc=-alphaca*barvs*Isoc
+# barvs=2*Vs/((-67-Eca)*alphaca)
+Isoc=gsoc*(tanh(Cer-ksoc))/2*(volt-Eca)
+Jsocc=-alphaca*Isoc
 
 VFRT=volt*(10^(-3))*F/(R*temp)
 Incx=(1/(1+((kn/Ca)^1.5)))*gncx*(exp(eta*VFRT)*(Na^3)*cao-exp((eta-1)*VFRT)*(nao^3)*Ca*1e-3)/(dncx+Na^3*cao+nao^3*Ca*10^(-3))
@@ -100,8 +101,8 @@ barhT=1/(1+exp((volt+5)/10))
 tauhTf=exp(-((volt+5)/10)^2)+2
 
 # Parameters
-par Glut_log=-8 alphaatp=0.03 alphaglut=0.03 kglut=1 gammaglut=0.01
-par fleak=0
+par Glut_log=-8 alphaatp=0.03 alphaglut=0.03 kglut=1 gammaglut=0.01 gsoc = 1
+par fleak=0 Ca_ex = 1500 v_ex_cyto = 0.000016
 par a2=0.2 Mgo=1
 par cao=2.5 Cm=1 Rb=10000 R0=27 Rc=0.4 Ru1=0.07867 Ru2=114.667  Rd=0.09 Rr=0.0128
 par gAMPA=3 Rbn=41666.667 Run=0.1075 R0n=23.25 Rcn=3.69 Rdn=0.007 Rrn=0.05667 gNMDA=0.7
@@ -158,6 +159,6 @@ D1n(0)=0
 @ MAXSTOR=10000000
 @ BOUNDS=1000000
 @ dsmin=1e-5,dsmax=0.05,parmin=-9,parmax=-2,autoxmin=-7,autoxmax=-4
-@ autoymax=-70,autoymin=-75,Ntst=80,Nmax=200000,NPr=100000,Ds=0.001,Dsmin=1e-05,EPSL=1e-07,Dsmax=0.05,EPSS=1e-5,EPSU=1e-7
+@ autoymin=0, autoymax=2,Ntst=80,Nmax=200000,NPr=100000,Ds=0.001,Dsmin=1e-05,EPSL=1e-07,Dsmax=0.05,EPSS=1e-5,EPSU=1e-7
 
 done

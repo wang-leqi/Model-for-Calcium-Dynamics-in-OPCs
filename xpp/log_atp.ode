@@ -1,7 +1,7 @@
 # The OPC calcium model
 # ODES
+dCa/dt=fi*(Jip3+Jleak+Jryr-Jserca+Jsocc+Jncxca-Jpmca+Jl+Jt+Jp2x7_Ca+Jleak_ex)
 dvolt/dt=(-Ileak-Isoc-Ik-Inak-Incx-Il-It-Ip2x7-Ileak_CaNa)/(Cm*sur)*100
-dCa/dt=fi*(Jip3+Jleak+Jryr-Jserca+Jsocc+Jncxca-Jpmca+Jl+Jt+Jp2x7_Ca)
 dCer/dt=(-gamma*fe*(Jip3+Jleak+Jryr-Jserca))
 dNa/dt=3*Jncxna-3*Jnak+(Narest-Na)/tetana+Jp2x7_Na+Jleak_Na
 # dNa/dt=-3*Jncxna-3*Jnak+(Narest-Na)/tetana
@@ -31,6 +31,7 @@ dQ3/dt=(k2*(10^(A))*Q4+L3*Q2-(3*k1+L2)*Q3)
 Ileak_CaNa=gleakk*(volt-Vlk)
 Jleak_Na = -(1-fleak)*alpha*Ileak_CaNa*10**3
 Ileak=gleak*(volt-Vl)
+Jleak_ex = v_ex_cyto * (Ca_ex - Ca)
 
 minf=IP3/(IP3+d_1)
 ninf=Ca/(Ca+d5)
@@ -44,9 +45,9 @@ Jserca=v3*(Ca^hc3)/((k3serc^hc3)+(Ca^hc3))
 
 alphaca=1/(2*Vosteo*F)
 Eca=R*temp/(2*F)*log(cao/(Ca*10^(-3)))*10^3
-barvs=2*Vs/((-67-Eca)*alphaca)
-Isoc=(tanh(Cer-ksoc))/2*(volt-Eca)
-Jsocc=-alphaca*barvs*Isoc
+# barvs=2*Vs/((-67-Eca)*alphaca)
+Isoc=gsoc*(tanh(Cer-ksoc))/2*(volt-Eca)
+Jsocc=-alphaca*Isoc
 
 VFRT=volt*(10^(-3))*F/(R*temp)
 Incx=(1/(1+((kn/Ca)^1.5)))*gncx*(exp(eta*VFRT)*(Na^3)*cao-exp((eta-1)*VFRT)*(nao^3)*Ca*1e-3)/(dncx+Na^3*cao+nao^3*Ca*10^(-3))
@@ -93,7 +94,7 @@ Jp2x7_K=-f_K*alpha*Ip2x7*10^(3)
 
 # Parameters
 # new-old: gncx: 0.16 <-> 0.04, vl: -81 <-> 30, vlk:60 <-> 70
-par A=-5.2 fleak=0
+par A=-5.2 fleak=0 gsoc = 1 Ca_ex = 1500 v_ex_cyto = 0.000016
 par a2=0.2 barg_p2x7=22.5
 par cao=2.5 Cm=1
 par d_1=0.13 d_2=1.049 d_3=0.9434 d5=0.08234 dncx=4 Delta=-0.031 eta=0.3
@@ -151,6 +152,6 @@ Q3(0)=0
 @ MAXSTOR=10000000
 @ BOUNDS=1000000
 @ dsmin=1e-5,dsmax=0.05,parmin=-8,parmax=0,autoxmin=-8,autoxmax=1
-@ autoymax=-71,autoymin=-73,Ntst=50,Nmax=20000,NPr=1000,Ds=0.001,Dsmin=1e-05,EPSL=1e-07,Dsmax=0.05,EPSS=1e-5,EPSU=1e-7
+@ autoymax=2,autoymin=0,Ntst=50,Nmax=20000,NPr=1000,Ds=0.001,Dsmin=1e-05,EPSL=1e-07,Dsmax=0.05,EPSS=1e-5,EPSU=1e-7
 
 done
